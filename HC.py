@@ -65,7 +65,7 @@ class DiabeticReadmissionAnalyzer:
             return self.df
             
         except Exception as e:
-            logger.error(f"❌ Data preparation failed: {str(e)}")
+            logger.error(f" Data preparation failed: {str(e)}")
             raise
     
     def _rename_columns(self):
@@ -133,7 +133,7 @@ class DiabeticReadmissionAnalyzer:
             logger.info(f"✓ Created binary target: {counts[1]:,} readmitted <30 days, {counts[0]:,} not readmitted")
             
         except Exception as e:
-            logger.error(f"❌ Error creating target variable: {str(e)}")
+            logger.error(f" Error creating target variable: {str(e)}")
             raise
     
     # ============================================
@@ -151,19 +151,19 @@ class DiabeticReadmissionAnalyzer:
             logger.info("="*70)
             
             # Test 1: Age vs Readmission
-            logger.info("\n📊 TEST 1: Does AGE affect 30-day readmission?")
+            logger.info("\n TEST 1: Does AGE affect 30-day readmission?")
             self._test_age_readmission()
             
             # Test 2: Medication count vs Readmission
-            logger.info("\n📊 TEST 2: Does MEDICATION COUNT affect 30-day readmission?")
+            logger.info("\n TEST 2: Does MEDICATION COUNT affect 30-day readmission?")
             self._test_medication_readmission()
             
             # Test 3: Combined effect (Age + Medications)
-            logger.info("\n📊 TEST 3: Combined effect of AGE + MEDICATIONS")
+            logger.info("\n TEST 3: Combined effect of AGE + MEDICATIONS")
             self._test_combined_effect()
             
             # Test 4: High-risk group analysis
-            logger.info("\n📊 TEST 4: High-risk group (Elderly + Many Meds)")
+            logger.info("\n TEST 4: High-risk group (Elderly + Many Meds)")
             self._analyze_high_risk_group()
             
             logger.info("\n" + "="*70)
@@ -173,7 +173,7 @@ class DiabeticReadmissionAnalyzer:
             return self.results
             
         except Exception as e:
-            logger.error(f"❌ Hypothesis testing failed: {str(e)}")
+            logger.error(f" Hypothesis testing failed: {str(e)}")
             raise
     
     def _test_age_readmission(self):
@@ -207,7 +207,7 @@ class DiabeticReadmissionAnalyzer:
                 logger.info("✗ Age does NOT significantly affect 30-day readmission")
             
         except Exception as e:
-            logger.error(f"❌ Age test failed: {str(e)}")
+            logger.error(f" Age test failed: {str(e)}")
     
     def _test_medication_readmission(self):
         """Test if medication count affects readmission"""
@@ -241,7 +241,7 @@ class DiabeticReadmissionAnalyzer:
                 logger.info("✗ Medication count does NOT significantly affect 30-day readmission")
             
         except Exception as e:
-            logger.error(f"❌ Medication test failed: {str(e)}")
+            logger.error(f" Medication test failed: {str(e)}")
     
     def _test_combined_effect(self):
         """Test combined effect of age and medications"""
@@ -274,7 +274,7 @@ class DiabeticReadmissionAnalyzer:
             }
             
         except Exception as e:
-            logger.error(f"❌ Combined test failed: {str(e)}")
+            logger.error(f" Combined test failed: {str(e)}")
     
     def _analyze_high_risk_group(self):
         """Analyze elderly patients with many medications"""
@@ -295,13 +295,13 @@ class DiabeticReadmissionAnalyzer:
             high_risk_rate = high_risk['readmitted_30days'].mean() * 100
             low_risk_rate = low_risk['readmitted_30days'].mean() * 100
             
-            print(f"\n🎯 HIGH-RISK GROUP (Age 60+ AND 15+ medications):")
+            print(f"\n HIGH-RISK GROUP (Age 60+ AND 15+ medications):")
             print(f"   - Group size: {len(high_risk):,} patients")
             print(f"   - Readmission rate: {high_risk_rate:.2f}%")
-            print(f"\n🎯 LOW-RISK GROUP (Younger OR Fewer medications):")
+            print(f"\n LOW-RISK GROUP (Younger OR Fewer medications):")
             print(f"   - Group size: {len(low_risk):,} patients")
             print(f"   - Readmission rate: {low_risk_rate:.2f}%")
-            print(f"\n📈 RISK RATIO: {high_risk_rate/low_risk_rate:.2f}x higher risk")
+            print(f"\n RISK RATIO: {high_risk_rate/low_risk_rate:.2f}x higher risk")
             
             self.results['high_risk_analysis'] = {
                 'high_risk_count': len(high_risk),
@@ -329,32 +329,32 @@ class DiabeticReadmissionAnalyzer:
             logger.info("="*70)
             
             summary = []
-            summary.append("\n📋 HYPOTHESIS: 'Older diabetic patients with multiple medications")
+            summary.append("\n HYPOTHESIS: 'Older diabetic patients with multiple medications")
             summary.append("   are more likely to be readmitted within 30 days'")
             summary.append("\n" + "-"*70)
             
             # Check each component
             if self.results.get('age_test', {}).get('significant'):
-                summary.append("\n✅ Age IS a significant factor (p < 0.05)")
+                summary.append("\n Age IS a significant factor (p < 0.05)")
             else:
-                summary.append("\n⚠️ Age is NOT a significant factor")
+                summary.append("\n Age is NOT a significant factor")
             
             if self.results.get('medication_test', {}).get('significant'):
-                summary.append("✅ Medication count IS a significant factor (p < 0.05)")
+                summary.append(" Medication count IS a significant factor (p < 0.05)")
             else:
-                summary.append("⚠️ Medication count is NOT a significant factor")
+                summary.append(" Medication count is NOT a significant factor")
             
             if self.results.get('combined_test', {}).get('significant'):
-                summary.append("✅ Combined effect (Age + Meds) IS significant (p < 0.05)")
+                summary.append(" Combined effect (Age + Meds) IS significant (p < 0.05)")
             
             # High-risk group findings
             hr_analysis = self.results.get('high_risk_analysis', {})
             if hr_analysis:
                 risk_ratio = hr_analysis.get('risk_ratio', 1)
-                summary.append(f"\n🎯 HIGH-RISK GROUP: {risk_ratio:.2f}x higher readmission risk")
+                summary.append(f"\n HIGH-RISK GROUP: {risk_ratio:.2f}x higher readmission risk")
             
             summary.append("\n" + "-"*70)
-            summary.append("\n💡 RECOMMENDATIONS:")
+            summary.append("\n RECOMMENDATIONS:")
             summary.append("1. Target patients aged 60+ with 15+ medications for intervention")
             summary.append("2. Implement enhanced discharge planning for high-risk groups")
             summary.append("3. Schedule follow-up appointments within 7 days of discharge")
@@ -367,7 +367,7 @@ class DiabeticReadmissionAnalyzer:
             return summary_text
             
         except Exception as e:
-            logger.error(f"❌ Summary generation failed: {str(e)}")
+            logger.error(f" Summary generation failed: {str(e)}")
             return "Error generating summary"
 
 
@@ -397,6 +397,7 @@ if __name__ == "__main__":
         print("="*70)
         
     except Exception as e:
-        print(f"\n❌ ANALYSIS FAILED: {str(e)}")
+        print(f"\n ANALYSIS FAILED: {str(e)}")
 
         print("Please check the error logs above for details.")
+
