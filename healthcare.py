@@ -247,124 +247,86 @@ print(f"\nChi-square test: p-value = {p_value:.4f}")
 if p_value < 0.05:
     print(" Age and readmission are statistically related!")
 
-    import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
 
-# 1. Bar Chart: Readmission Distribution
-plt.figure(figsize=(8, 6))
-df['readmission_status'].value_counts().plot(kind='bar', color=['green', 'orange', 'red'])
-plt.title('Distribution of Readmission Status', fontsize=14, fontweight='bold')
-plt.xlabel('Readmission Status')
-plt.ylabel('Number of Patients')
-plt.xticks(rotation=0)
+# Read your data
+df = pd.read_excel(r"C:\Users\Raiyan\Downloads\diabetic_data_QMH_Club_Fest_2025.xlsx")
 
+# Define the dictionaries
+discharge_type_dict = {
+    1: "Discharged to home",
+    2: "Discharged/transferred to another short term hospital",
+    3: "Discharged/transferred to SNF",
+    4: "Discharged/transferred to ICF",
+    5: "Discharged/transferred to another type of inpatient care institution",
+    6: "Discharged/transferred to home with home health service",
+    7: "Left AMA",
+    8: "Discharged/transferred to home under care of Home IV provider",
+    9: "Admitted as an inpatient to this hospital",
+    10: "Neonate discharged to another hospital for neonatal aftercare",
+    11: "Expired",
+    12: "Still patient or expected to return for outpatient services",
+    13: "Hospice / home",
+    14: "Hospice / medical facility",
+    15: "Discharged/transferred within this institution to Medicare approved swing bed",
+    16: "Discharged/transferred/referred to another institution for outpatient services",
+    17: "Discharged/transferred/referred to this institution for outpatient services",
+    18: "NULL",
+    19: "Expired at home. Medicaid only, hospice.",
+    20: "Expired in a medical facility. Medicaid only, hospice.",
+    21: "Expired, place unknown. Medicaid only, hospice.",
+    22: "Discharged/transferred to another rehab fac including rehab units of a hospital.",
+    23: "Discharged/transferred to a long term care hospital",
+    24: "Discharged/transferred to a nursing facility certified under Medicaid but not certified under Medicare.",
+    25: "Not Mapped",
+    26: "Unknown/Invalid",
+    27: "Discharged/transferred to another Type of Health Care Institution not Defined Elsewhere",
+    28: "Discharged/transferred to a federal health care facility.",
+    29: "Discharged/transferred to a psychiatric hospital of psychiatric distinct part unit of a hospital",
+    30: "Discharged/transferred to a Critical Access Hospital (CAH)."
+}
 
-# 2. Pie Chart: Readmission Proportions
-plt.figure(figsize=(8, 6))
-df['readmission_status'].value_counts().plot(kind='pie', autopct='%1.1f%%', 
-                                               colors=['green', 'orange', 'red'])
-plt.title('Readmission Proportions')
-plt.ylabel('')
+admission_source_dict = {
+    1: "Physician Referral",
+    2: "Clinic Referral",
+    3: "HMO Referral",
+    4: "Transfer from a hospital",
+    5: "Transfer from a Skilled Nursing Facility (SNF)",
+    6: "Transfer from another health care facility",
+    7: "Emergency Room",
+    8: "Court/Law Enforcement",
+    9: "Not Available",
+    10: "Transfer from critical access hospital",
+    11: "Normal Delivery",
+    12: "Premature Delivery",
+    13: "Sick Baby",
+    14: "Extramural Birth",
+    15: "Not Available",
+    17: "NULL",
+    18: "Transfer from Another Home Health Agency",
+    19: "Readmission to Same Home Health Agency",
+    20: "Not Mapped",
+    21: "Unknown/Invalid",
+    22: "Transfer from hospital inpt/same fac result in a sep claim",
+    23: "Born inside this hospital",
+    24: "Born outside this hospital",
+    25: "Transfer from Ambulatory Surgery Center",
+    26: "Transfer from Hospice"
+}
 
+# Map the codes to descriptions
+df['discharge_type_desc'] = df['V8'].map(discharge_type_dict)
+df['admission_source_desc'] = df['V9'].map(admission_source_dict)
 
-# 3. Bar Chart: Age Distribution
-plt.figure(figsize=(10, 6))
-df['age_group'].value_counts().sort_index().plot(kind='bar', color='skyblue')
-plt.title('Patient Distribution by Age Group', fontsize=14, fontweight='bold')
-plt.xlabel('Age Group')
-plt.ylabel('Number of Patients')
-plt.xticks(rotation=45)
-
-
-# 4. Stacked Bar Chart: Readmission by Age
-readmission_age = pd.crosstab(df['age_group'], df['readmission_status'], normalize='index')
-readmission_age.plot(kind='bar', stacked=True, figsize=(12, 6), 
-                     color=['green', 'orange', 'red'])
-plt.title('Readmission Status by Age Group', fontsize=14, fontweight='bold')
-plt.xlabel('Age Group')
-plt.ylabel('Proportion')
-plt.legend(title='Readmission Status')
-plt.xticks(rotation=45)
-
-
-# 5. Line Chart: Average Medications by Age
-med_by_age = df.groupby('age_group')['medication_count'].mean().sort_index()
-plt.figure(figsize=(10, 6))
-plt.plot(med_by_age.index, med_by_age.values, marker='o', linewidth=2, markersize=8)
-plt.title('Average Medication Count by Age Group', fontsize=14, fontweight='bold')
-plt.xlabel('Age Group')
-plt.ylabel('Average Number of Medications')
-plt.xticks(rotation=45)
-plt.grid(True, alpha=0.3)
-
-
-# 6. Box Plot: Medication Distribution by Readmission
-plt.figure(figsize=(10, 6))
-sns.boxplot(data=df, x='readmission_status', y='medication_count', 
-            palette=['green', 'orange', 'red'])
-plt.title('Medication Count by Readmission Status', fontsize=14, fontweight='bold')
-plt.xlabel('Readmission Status')
-plt.ylabel('Number of Medications')
-
-
-# 7. Histogram: Hospital Days Distribution
-plt.figure(figsize=(10, 6))
-plt.hist(df['hospital_days'], bins=14, color='coral', edgecolor='black')
-plt.title('Distribution of Hospital Stay Duration', fontsize=14, fontweight='bold')
-plt.xlabel('Hospital Days')
-plt.ylabel('Number of Patients')
-
-
-# 8. Box Plot: Hospital Days by Readmission
-plt.figure(figsize=(10, 6))
-sns.boxplot(data=df, x='readmission_status', y='hospital_days',
-            palette=['green', 'orange', 'red'])
-plt.title('Hospital Stay Duration by Readmission Status', fontsize=14, fontweight='bold')
-plt.xlabel('Readmission Status')
-plt.ylabel('Hospital Days')
-
-
-# Gender analysis
-print("=== GENDER ANALYSIS ===")
-print("\nReadmission by Gender:")
-print(pd.crosstab(df['sex_identity'], df['readmission_status'], normalize='index'))
-
-# Ethnicity analysis
-print("\n=== ETHNICITY ANALYSIS ===")
-print("\nReadmission by Ethnicity:")
-print(pd.crosstab(df['ethnic_group'], df['readmission_status'], normalize='index'))
-
-# Visualize
-plt.figure(figsize=(12, 5))
-
-plt.subplot(1, 2, 1)
-pd.crosstab(df['sex_identity'], df['readmission_status'], normalize='index').plot(
-    kind='bar', ax=plt.gca(), color=['green', 'orange', 'red'])
-plt.title('Readmission by Gender')
-plt.xlabel('Sex')
-plt.ylabel('Proportion')
-plt.xticks(rotation=0)
-
-plt.subplot(1, 2, 2)
-pd.crosstab(df['ethnic_group'], df['readmission_status'], normalize='index').plot(
-    kind='bar', ax=plt.gca(), color=['green', 'orange', 'red'])
-plt.title('Readmission by Ethnicity')
-plt.xlabel('Ethnicity')
-plt.ylabel('Proportion')
-plt.xticks(rotation=45)
-
-plt.tight_layout()
+# View the results
+print("Sample data with descriptions:")
+print(df[['V8', 'discharge_type_desc', 'V9', 'admission_source_desc']].head(10))
 
 
-# Hospital stay analysis
-print("=== HOSPITAL STAY ANALYSIS ===")
-print("\nAverage hospital days by readmission status:")
-print(df.groupby('readmission_status')['hospital_days'].mean())
+print("=== DISCHARGE TYPE ANALYSIS ===")
+print("\nMost common discharge types:")
+print(df['discharge_type_desc'].value_counts().head(10))
 
-# Does longer stay predict readmission?
-df['long_stay'] = (df['hospital_days'] > df['hospital_days'].median()).astype(int)
-
-print("\nReadmission by hospital stay duration:")
-print(pd.crosstab(df['long_stay'], df['readmission_status'], normalize='index'))
-
-plt.show()
+print("\n=== ADMISSION SOURCE ANALYSIS ===")
+print("\nMost common admission sources:")
+print(df['admission_source_desc'].value_counts().head(10))
