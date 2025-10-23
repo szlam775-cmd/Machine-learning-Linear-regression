@@ -1,17 +1,24 @@
 import pandas as pd
+from scipy.stats import chi2_contingency
+
+# Set display options
 pd.set_option("display.max_columns", 50)
 pd.set_option("display.precision", 2)
+pd.set_option('display.width', None)
 
+# ============================================
+# STEP 1: READ THE DATA (ONLY ONCE!)
+# ============================================
 df = pd.read_excel(r"C:\Users\Raiyan\Downloads\diabetic_data_QMH_Club_Fest_2025.xlsx", sheet_name="Sheet1")
 
+print("Original data:")
 print(df.head())
-print(df.shape)
+print(f"Shape: {df.shape}")
 df.info()
 
-import pandas as pd
-
-df = pd.read_excel(r"C:\Users\Raiyan\Downloads\diabetic_data_QMH_Club_Fest_2025.xlsx")
-
+# ============================================
+# STEP 2: RENAME COLUMNS
+# ============================================
 column_mapping = {
     'V1': 'encounter_code',
     'V2': 'patient_code',
@@ -37,7 +44,6 @@ column_mapping = {
     'V22': 'diagnosis_total',
     'V23': 'glucose_test_result',
     'V24': 'A1C_result',
-    # Medication columns (V25-V47)
     'V25': 'medication_1',
     'V26': 'medication_2',
     'V27': 'medication_3',
@@ -61,97 +67,80 @@ column_mapping = {
     'V45': 'medication_21',
     'V46': 'medication_22',
     'V47': 'medication_23',
-    # Final columns
     'V48': 'med_change_status',
     'V49': 'diabetic_med_given',
     'V50': 'readmission_status'
 }
+
 df.rename(columns=column_mapping, inplace=True)
 
-print("✓ Columns renamed successfully!")
-print(f"\nDataset shape: {df.shape}")
+print("\n✓ Columns renamed successfully!")
+print(f"Dataset shape: {df.shape}")
 print("\nNew column names:")
 print(df.columns.tolist())
 print("\nFirst few rows:")
 print(df.head())
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
-print(df.head())
-
-# Complete handling code
+# ============================================
+# STEP 3: HANDLE MISSING VALUES
+# ============================================
 df['glucose_test_result'] = df['glucose_test_result'].fillna('Not Tested')
 df['A1C_result'] = df['A1C_result'].fillna('Not Tested')
 
-# Now you have no missing data and can use all 101,766 records!
-print(f"Complete records: {len(df)}")
+print(f"\nComplete records: {len(df)}")
 print(f"No missing values: {df.isnull().sum().sum() == 0}")
 
 # ============================================
-# NUMERICAL COLUMNS (Quantitative - can do math on them)
+# STEP 4: FIX DATA TYPES
 # ============================================
+
+# Numerical columns
 numerical_cols = [
     'encounter_code',
     'patient_code',
     'adm_type_code',
     'discharge_type',
     'adm_src_code',
-    'hospital_days',           # Number of days in hospital
-    'lab_test_count',          # Count of lab tests
-    'procedure_count',         # Count of procedures
-    'medication_count',        # Count of medications
-    'outpatient_visits',       # Number of visits
-    'emergency_visits',        # Number of visits
-    'inpatient_visits',        # Number of visits
-    'diagnosis_total'          # Total diagnoses
+    'hospital_days',
+    'lab_test_count',
+    'procedure_count',
+    'medication_count',
+    'outpatient_visits',
+    'emergency_visits',
+    'inpatient_visits',
+    'diagnosis_total'
 ]
 
-# Convert to numeric
 for col in numerical_cols:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
-print(f"✓ Converted {len(numerical_cols)} numerical columns")
+print(f"\n✓ Converted {len(numerical_cols)} numerical columns")
 
-# ============================================
-# NOMINAL COLUMNS (Categorical - labels/categories)
-# ============================================
+# Categorical columns
 nominal_cols = [
-    # Demographics
-    'ethnic_group',            # Asian, Caucasian, African American, etc.
-    'sex_identity',            # Male, Female
-    'age_group',               # [0-10), [10-20), etc.
-    'body_weight',             # Weight categories
-    
-    # Administrative
-    'insurance_code',          # Insurance type
-    'provider_specialty',      # Doctor specialty
-    
-    # Medical diagnoses
-    'diagnosis_primary',       # Primary diagnosis code
-    'diagnosis_secondary',     # Secondary diagnosis code
-    'diagnosis_tertiary',      # Tertiary diagnosis code
-    
-    # Test results
-    'glucose_test_result',     # Normal, High, Not Tested, etc.
-    'A1C_result',              # Normal, High, Not Tested, etc.
-    
-    # Medications (23 medication columns)
+    'ethnic_group',
+    'sex_identity',
+    'age_group',
+    'body_weight',
+    'insurance_code',
+    'provider_specialty',
+    'diagnosis_primary',
+    'diagnosis_secondary',
+    'diagnosis_tertiary',
+    'glucose_test_result',
+    'A1C_result',
     'medication_1', 'medication_2', 'medication_3', 'medication_4',
     'medication_5', 'medication_6', 'medication_7', 'medication_8',
     'medication_9', 'medication_10', 'medication_11', 'medication_12',
     'medication_13', 'medication_14', 'medication_15', 'medication_16',
     'medication_17', 'medication_18', 'medication_19', 'medication_20',
     'medication_21', 'medication_22', 'medication_23',
-    
-    # Outcomes
-    'med_change_status',       # Changed, Not Changed
-    'diabetic_med_given',      # Yes, No
-    'readmission_status'       # Yes, No, >30 days
+    'med_change_status',
+    'diabetic_med_given',
+    'readmission_status'
 ]
 
-# Convert to category (nominal)
 for col in nominal_cols:
     if col in df.columns:
         df[col] = df[col].astype('category')
@@ -159,100 +148,9 @@ for col in nominal_cols:
 print(f"✓ Converted {len(nominal_cols)} nominal (categorical) columns")
 
 # ============================================
-# VERIFY THE CONVERSIONS
+# STEP 5: ADD DISCHARGE & ADMISSION DESCRIPTIONS
 # ============================================
-print("\n" + "="*50)
-print("DATA TYPE SUMMARY")
-print("="*50)
 
-print(f"\nNumerical columns ({len(df.select_dtypes(include=['int64', 'float64']).columns)}):")
-print(df.select_dtypes(include=['int64', 'float64']).columns.tolist())
-
-print(f"\nNominal columns ({len(df.select_dtypes(include='category').columns)}):")
-print(df.select_dtypes(include='category').columns.tolist())
-
-print("\n" + "="*50)
-print("SAMPLE DATA")
-print("="*50)
-print(df.head())
-
-print("\n" + "="*50)
-print("DETAILED INFO")
-print("="*50)
-df.info()
-
-# ============================================
-# USEFUL CHECKS
-# ============================================
-print("\n" + "="*50)
-print("DATA QUALITY CHECKS")
-print("="*50)
-
-# Check for any remaining missing values
-print(f"\nTotal missing values: {df.isnull().sum().sum()}")
-
-# Summary statistics for numerical columns
-print("\nNumerical columns summary:")
-print(df.describe())
-
-# Check unique values in key nominal columns
-print("\nKey nominal column distributions:")
-print(f"\nReadmission status:")
-print(df['readmission_status'].value_counts())
-
-print(f"\nAge groups:")
-print(df['age_group'].value_counts().sort_index())
-
-print(f"\nSex identity:")
-print(df['sex_identity'].value_counts())
-
-# Numerical analysis
-print("Average hospital days:", df['hospital_days'].mean())
-print("Correlation between meds and visits:", 
-      df['medication_count'].corr(df['emergency_visits']))
-
-# Nominal analysis
-print("\nReadmission by age group:")
-print(pd.crosstab(df['age_group'], df['readmission_status'], normalize='index'))
-
-print("\nReadmission by sex:")
-print(pd.crosstab(df['sex_identity'], df['readmission_status'], normalize='index'))
-
-# For your hypothesis: "Older patients with more medications"
-print("\nAverage medications by age group:")
-print(df.groupby('age_group')['medication_count'].mean().sort_index())
-
-# 1. Combine age and medication count to test your hypothesis directly
-df['high_medication'] = (df['medication_count'] > df['medication_count'].median()).astype(int)
-
-print("Readmission by age + medication count:")
-print(pd.crosstab([df['age_group'], df['high_medication']], 
-                   df['readmission_status'], 
-                   normalize='index'))
-
-# 2. Look at specific <30 day readmissions for older patients with many meds
-elderly_high_meds = df[(df['age_group'].isin(['[60-70)', '[70-80)', '[80-90)'])) & 
-                       (df['medication_count'] > 15)]
-
-print("\n<30 day readmission for elderly with 15+ medications:")
-print(elderly_high_meds['readmission_status'].value_counts(normalize=True))
-
-# 3. Statistical test
-from scipy.stats import chi2_contingency
-
-# Test if age and readmission are related
-contingency_table = pd.crosstab(df['age_group'], df['readmission_status'])
-chi2, p_value, dof, expected = chi2_contingency(contingency_table)
-print(f"\nChi-square test: p-value = {p_value:.4f}")
-if p_value < 0.05:
-    print(" Age and readmission are statistically related!")
-
-import pandas as pd
-
-# Read your data
-df = pd.read_excel(r"C:\Users\Raiyan\Downloads\diabetic_data_QMH_Club_Fest_2025.xlsx")
-
-# Define the dictionaries
 discharge_type_dict = {
     1: "Discharged to home",
     2: "Discharged/transferred to another short term hospital",
@@ -314,19 +212,110 @@ admission_source_dict = {
     26: "Transfer from Hospice"
 }
 
-# Map the codes to descriptions
-df['discharge_type_desc'] = df['V8'].map(discharge_type_dict)
-df['admission_source_desc'] = df['V9'].map(admission_source_dict)
+# Map the codes to descriptions (NOW using correct column names!)
+df['discharge_type_desc'] = df['discharge_type'].map(discharge_type_dict)
+df['admission_source_desc'] = df['adm_src_code'].map(admission_source_dict)
 
-# View the results
-print("Sample data with descriptions:")
-print(df[['V8', 'discharge_type_desc', 'V9', 'admission_source_desc']].head(10))
+print("\n✓ Added discharge and admission descriptions")
 
+# ============================================
+# STEP 6: VERIFY DATA
+# ============================================
 
-print("=== DISCHARGE TYPE ANALYSIS ===")
+print("\n" + "="*50)
+print("DATA TYPE SUMMARY")
+print("="*50)
+
+print(f"\nNumerical columns ({len(df.select_dtypes(include=['int64', 'float64']).columns)}):")
+print(df.select_dtypes(include=['int64', 'float64']).columns.tolist())
+
+print(f"\nNominal columns ({len(df.select_dtypes(include='category').columns)}):")
+print(df.select_dtypes(include='category').columns.tolist())
+
+print("\n" + "="*50)
+print("SAMPLE DATA WITH NEW DESCRIPTIONS")
+print("="*50)
+print(df[['discharge_type', 'discharge_type_desc', 'adm_src_code', 'admission_source_desc']].head(10))
+
+print("\n" + "="*50)
+print("DATA QUALITY CHECKS")
+print("="*50)
+
+print(f"\nTotal missing values: {df.isnull().sum().sum()}")
+print("\nNumerical columns summary:")
+print(df.describe())
+
+print("\nKey nominal column distributions:")
+print("\nReadmission status:")
+print(df['readmission_status'].value_counts())
+
+print("\nAge groups:")
+print(df['age_group'].value_counts().sort_index())
+
+print("\nSex identity:")
+print(df['sex_identity'].value_counts())
+
+# ============================================
+# STEP 7: ANALYSIS
+# ============================================
+
+print("\n" + "="*50)
+print("ANALYSIS RESULTS")
+print("="*50)
+
+# Basic statistics
+print("\nAverage hospital days:", df['hospital_days'].mean())
+print("Correlation between meds and emergency visits:", 
+      df['medication_count'].corr(df['emergency_visits']))
+
+# Readmission by age
+print("\nReadmission by age group:")
+print(pd.crosstab(df['age_group'], df['readmission_status'], normalize='index'))
+
+# Readmission by sex
+print("\nReadmission by sex:")
+print(pd.crosstab(df['sex_identity'], df['readmission_status'], normalize='index'))
+
+# Medications by age
+print("\nAverage medications by age group:")
+print(df.groupby('age_group')['medication_count'].mean().sort_index())
+
+# High medication analysis
+df['high_medication'] = (df['medication_count'] > df['medication_count'].median()).astype(int)
+
+print("\nReadmission by age + medication count:")
+print(pd.crosstab([df['age_group'], df['high_medication']], 
+                   df['readmission_status'], 
+                   normalize='index'))
+
+# Elderly with high medications
+elderly_high_meds = df[(df['age_group'].isin(['[60-70)', '[70-80)', '[80-90)'])) & 
+                       (df['medication_count'] > 15)]
+
+print("\n<30 day readmission for elderly with 15+ medications:")
+print(elderly_high_meds['readmission_status'].value_counts(normalize=True))
+
+# Chi-square test
+contingency_table = pd.crosstab(df['age_group'], df['readmission_status'])
+chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+print(f"\nChi-square test: p-value = {p_value:.4f}")
+if p_value < 0.05:
+    print("✓ Age and readmission are statistically related!")
+
+# ============================================
+# STEP 8: DISCHARGE & ADMISSION ANALYSIS
+# ============================================
+
+print("\n" + "="*50)
+print("DISCHARGE TYPE & ADMISSION SOURCE ANALYSIS")
+print("="*50)
+
+print("\n=== DISCHARGE TYPE ANALYSIS ===")
 print("\nMost common discharge types:")
 print(df['discharge_type_desc'].value_counts().head(10))
 
 print("\n=== ADMISSION SOURCE ANALYSIS ===")
 print("\nMost common admission sources:")
 print(df['admission_source_desc'].value_counts().head(10))
+
+print("\n Analysis complete!")
