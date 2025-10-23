@@ -216,7 +216,26 @@ admission_source_dict = {
 df['discharge_type_desc'] = df['discharge_type'].map(discharge_type_dict)
 df['admission_source_desc'] = df['adm_src_code'].map(admission_source_dict)
 
-print("\n✓ Added discharge and admission descriptions")
+
+# ============================================
+# ADD ADMISSION TYPE DESCRIPTIONS (V7)
+# ============================================
+
+admission_type_dict = {
+    1: "Emergency",
+    2: "Urgent",
+    3: "Elective",
+    4: "Newborn",
+    5: "Not Available",
+    6: "NULL",
+    7: "Trauma Center",
+    8: "Not Available"
+}
+
+# Map the codes to descriptions
+df['admission_type_desc'] = df['adm_type_code'].map(admission_type_dict)
+
+print("\n✓ Added discharge, admission source, and admission type descriptions")
 
 # ============================================
 # STEP 6: VERIFY DATA
@@ -255,9 +274,17 @@ print(df['age_group'].value_counts().sort_index())
 print("\nSex identity:")
 print(df['sex_identity'].value_counts())
 
+print("\n" + "="*50)
+print("SAMPLE DATA WITH ALL DESCRIPTIONS")
+print("="*50)
+print(df[['adm_type_code', 'admission_type_desc', 
+          'discharge_type', 'discharge_type_desc', 
+          'adm_src_code', 'admission_source_desc']].head(10))
+
 # ============================================
 # STEP 7: ANALYSIS
 # ============================================
+
 
 print("\n" + "="*50)
 print("ANALYSIS RESULTS")
@@ -319,3 +346,80 @@ print("\nMost common admission sources:")
 print(df['admission_source_desc'].value_counts().head(10))
 
 print("\n Analysis complete!")
+
+# NEW: Admission Type Analysis
+print("\n=== ADMISSION TYPE ANALYSIS ===")
+print("\nAdmission type distribution:")
+print(df['admission_type_desc'].value_counts())
+
+print("\nReadmission rate by admission type:")
+for adm_type in df['admission_type_desc'].value_counts().index:
+    subset = df[df['admission_type_desc'] == adm_type]
+    readmission_rate = ((subset['readmission_status'] != 'NO').sum() / len(subset) * 100)
+    print(f"  {adm_type}: {readmission_rate:.1f}% readmitted")
+
+# Crosstab analysis
+print("\nDetailed readmission by admission type:")
+print(pd.crosstab(df['admission_type_desc'], df['readmission_status'], normalize='index'))
+
+
+
+# ============================================
+# MEDICATION COUNT BY READMISSION STATUS
+# ============================================
+
+print("\n" + "="*50)
+print("MEDICATION COUNT: FIVE-NUMBER SUMMARY BY READMISSION STATUS")
+print("="*50)
+
+# Group by readmission status and calculate five-number summary
+readmission_groups = df.groupby('readmission_status')['medication_count']
+
+print("\nDetailed statistics for each readmission group:")
+print("-" * 50)
+
+for group_name, group_data in readmission_groups:
+    print(f"\n{group_name}:")
+    print(f"  Count:    {len(group_data)}")
+    print(f"  Min:      {group_data.min()}")
+    print(f"  Q1:       {group_data.quantile(0.25)}")
+    print(f"  Median:   {group_data.median()}")
+    print(f"  Q3:       {group_data.quantile(0.75)}")
+    print(f"  Max:      {group_data.max()}")
+    print(f"  Mean:     {group_data.mean():.2f}")
+    print(f"  Std Dev:  {group_data.std():.2f}")
+
+# Create a summary table
+summary_table = pd.DataFrame({
+    'Min': readmission_groups.min(),
+    'Q1': readmission_groups.quantile(0.25),
+    'Median': readmission_groups.median(),
+    'Q3': readmission_groups.quantile(0.75),
+    'Max': readmission_groups.max(),
+    'Mean': readmission_groups.mean(),
+    'Count': readmission_groups.count()
+})
+
+print("\n" + "="*50)
+print("SUMMARY TABLE")
+print("="*50)
+print(summary_table)
+
+# Calculate IQR and identify outliers
+print("\n" + "="*50)
+print("OUTLIER ANALYSIS")
+print("="*50)
+
+for group_name, group_data in readmission_groups:
+    q1 = group_data.quantile(0.25)
+    q3 = group_data.quantile(0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    outliers = group_data[(group_data < lower_bound) | (group_data > upper_bound)]
+    
+    print(f"\n{group_name}:")
+    print(f"  IQR: {iqr}")
+    print(f"  Lower bound: {lower_bound}")
+    print(f"  Upper bound: {upper_bound}")
+    print(f"  Number of outliers: {len(outliers)} ({len(outliers)/len(group_data)*100:.1f}%)")
