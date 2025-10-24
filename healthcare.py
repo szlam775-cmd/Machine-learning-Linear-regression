@@ -218,7 +218,7 @@ df['admission_source_desc'] = df['adm_src_code'].map(admission_source_dict)
 
 
 # ============================================
-# ADD ADMISSION TYPE DESCRIPTIONS (V7)
+# STEP 5A: ADD ADMISSION TYPE DESCRIPTIONS (V7)
 # ============================================
 
 admission_type_dict = {
@@ -236,6 +236,83 @@ admission_type_dict = {
 df['admission_type_desc'] = df['adm_type_code'].map(admission_type_dict)
 
 print("\n✓ Added discharge, admission source, and admission type descriptions")
+
+# ============================================
+# STEP 5B: MAP DIAGNOSIS CODES TO DISEASE GROUPS
+# ============================================
+
+def map_icd9_to_group(icd9_code):
+    """Map ICD-9 codes to disease groups based on ICD-9 classification"""
+    if pd.isna(icd9_code) or icd9_code == '?' or icd9_code == '':
+        return 'Unknown/Missing'
+    
+    code_str = str(icd9_code).strip()
+    
+    # Handle V codes and E codes
+    if code_str.startswith('V'):
+        return 'External Causes'
+    elif code_str.startswith('E'):
+        return 'External Causes'
+    
+    try:
+        code_num = float(code_str)
+    except:
+        return 'Other/Unknown'
+    
+    # Map based on ICD-9 ranges (from the table you provided)
+    if 390 <= code_num <= 459 or code_num == 785:
+        return 'Circulatory'
+    elif 460 <= code_num <= 519 or code_num == 786:
+        return 'Respiratory'
+    elif 520 <= code_num <= 579 or code_num == 787:
+        return 'Digestive'
+    elif 250.00 <= code_num < 251:  # Diabetes codes
+        return 'Diabetes'
+    elif 800 <= code_num <= 999:
+        return 'Injury'
+    elif 710 <= code_num <= 739:
+        return 'Musculoskeletal'
+    elif 580 <= code_num <= 629 or code_num == 788:
+        return 'Genitourinary'
+    elif 140 <= code_num <= 239:
+        return 'Neoplasms'
+    elif (780 <= code_num <= 781) or (784 <= code_num <= 799):
+        return 'Other (Symptoms)'
+    elif ((240 <= code_num < 250) or (251 <= code_num <= 279)) and code_num != 250:
+        return 'Endocrine (Excl. DM)'
+    elif 680 <= code_num <= 709 or code_num == 782:
+        return 'Skin/Subcutaneous'
+    elif 1 <= code_num <= 139:
+        return 'Infectious'
+    elif 290 <= code_num <= 319:
+        return 'Mental'
+    elif 280 <= code_num <= 289:
+        return 'Blood Disorders'
+    elif 320 <= code_num <= 359:
+        return 'Nervous System'
+    elif 630 <= code_num <= 679:
+        return 'Pregnancy/Childbirth'
+    elif 360 <= code_num <= 389:
+        return 'Sense Organs'
+    elif 740 <= code_num <= 759:
+        return 'Congenital Anomalies'
+    else:
+        return 'Other/Unknown'
+
+# Apply mapping
+df['diagnosis_primary_group'] = df['diagnosis_primary'].apply(map_icd9_to_group)
+df['diagnosis_secondary_group'] = df['diagnosis_secondary'].apply(map_icd9_to_group)
+df['diagnosis_tertiary_group'] = df['diagnosis_tertiary'].apply(map_icd9_to_group)
+
+print("\n✓ Mapped diagnosis codes to disease groups")
+
+# Show examples
+print("\nSample mappings:")
+print(df[['diagnosis_primary', 'diagnosis_primary_group']].head(10))
+
+print("\nPrimary diagnosis group distribution:")
+print(df['diagnosis_primary_group'].value_counts())
+
 
 # ============================================
 # STEP 6: VERIFY DATA
@@ -347,7 +424,10 @@ print(df['admission_source_desc'].value_counts().head(10))
 
 print("\n Analysis complete!")
 
+# ============================================
 # NEW: Admission Type Analysis
+# ============================================
+
 print("\n=== ADMISSION TYPE ANALYSIS ===")
 print("\nAdmission type distribution:")
 print(df['admission_type_desc'].value_counts())
@@ -362,7 +442,59 @@ for adm_type in df['admission_type_desc'].value_counts().index:
 print("\nDetailed readmission by admission type:")
 print(pd.crosstab(df['admission_type_desc'], df['readmission_status'], normalize='index'))
 
+# ============================================
+# ANALYSIS BY DISEASE GROUPS
+# ============================================
 
+print("\n" + "="*50)
+print("READMISSION BY PRIMARY DIAGNOSIS GROUP")
+print("="*50)
+
+# Readmission rate by disease group
+for disease in df['diagnosis_primary_group'].value_counts().head(10).index:
+    subset = df[df['diagnosis_primary_group'] == disease]
+    readmission_rate = ((subset['readmission_status'] != 'NO').sum() / len(subset) * 100)
+    count = len(subset)
+    print(f"{disease:25s}: {readmission_rate:5.1f}% readmitted (n={count:,})")
+
+# Crosstab
+print("\nDetailed readmission by top 5 disease groups:")
+top_diseases = df['diagnosis_primary_group'].value_counts().head(5).index
+for disease in top_diseases:
+    subset = df[df['diagnosis_primary_group'] == disease]
+    crosstab = pd.crosstab(subset['readmission_status'], columns='count', normalize=True)
+    print(f"\n{disease}:")
+    print(crosstab)
+
+# Chi-square test
+print("\n=== CHI-SQUARE TEST: Disease Group vs Readmission ===")
+ct_disease = pd.crosstab(df['diagnosis_primary_group'], df['readmission_status'])
+chi2_disease, p_disease, dof, exp = chi2_contingency(ct_disease)
+print(f"Chi-square = {chi2_disease:.2f}, p-value = {p_disease:.4f}")
+if p_disease < 0.05:
+    print("✓ Primary diagnosis group is significantly related to readmission!")
+
+# ============================================
+# DISEASES THAT HAVE HIGHEST READMISSION
+# ============================================ 
+    
+print("Readmission by disease type:")
+for disease in df['diagnosis_primary_group'].value_counts().head(5).index:
+    subset = df[df['diagnosis_primary_group'] == disease]
+    rate = ((subset['readmission_status'] != 'NO').sum() / len(subset) * 100)
+    print(f"{disease}: {rate:.1f}%")
+
+# ============================================
+# AGE + DISEASE COMBINATION RISK
+# ============================================ 
+  
+print("High-risk combinations:")
+elderly_circulatory = df[(df['age_group'] == '[70-80)') & 
+                          (df['diagnosis_primary_group'] == 'Circulatory')]
+print(f"Elderly with circulatory disease: {len(elderly_circulatory)} patients")
+readmit_rate = ((elderly_circulatory['readmission_status'] != 'NO').sum() / 
+                len(elderly_circulatory) * 100)
+print(f"Readmission rate: {readmit_rate:.1f}%")
 
 # ============================================
 # MEDICATION COUNT BY READMISSION STATUS
@@ -371,6 +503,18 @@ print(pd.crosstab(df['admission_type_desc'], df['readmission_status'], normalize
 print("\n" + "="*50)
 print("MEDICATION COUNT: FIVE-NUMBER SUMMARY BY READMISSION STATUS")
 print("="*50)
+
+# Are circulatory patients more affected by high meds than diabetes patients?
+for disease in ['Diabetes', 'Circulatory', 'Respiratory']:
+    subset = df[df['diagnosis_primary_group'] == disease]
+    low_med = subset[subset['high_medication'] == 0]
+    high_med = subset[subset['high_medication'] == 1]
+    
+    low_rate = ((low_med['readmission_status'] != 'NO').sum() / len(low_med) * 100)
+    high_rate = ((high_med['readmission_status'] != 'NO').sum() / len(high_med) * 100)
+    effect = high_rate - low_rate
+    
+    print(f"{disease}: Medication effect = {effect:+.1f}%")
 
 # Group by readmission status and calculate five-number summary
 readmission_groups = df.groupby('readmission_status')['medication_count']
@@ -423,3 +567,35 @@ for group_name, group_data in readmission_groups:
     print(f"  Lower bound: {lower_bound}")
     print(f"  Upper bound: {upper_bound}")
     print(f"  Number of outliers: {len(outliers)} ({len(outliers)/len(group_data)*100:.1f}%)")
+
+    # 1. Show the NON-LINEAR relationship
+print("\n" + "="*50)
+print("MEDICATION EFFECT SIZE BY AGE GROUP")
+print("="*50)
+
+for age in df['age_group'].cat.categories:
+    subset = df[df['age_group'] == age]
+    low_med = subset[subset['high_medication'] == 0]
+    high_med = subset[subset['high_medication'] == 1]
+    
+    low_readmit = ((low_med['readmission_status'] != 'NO').sum() / len(low_med) * 100)
+    high_readmit = ((high_med['readmission_status'] != 'NO').sum() / len(high_med) * 100)
+    effect_size = high_readmit - low_readmit
+    
+    print(f"{age}: Effect size = {effect_size:+.1f}% "
+          f"(Low med: {low_readmit:.1f}%, High med: {high_readmit:.1f}%)")
+
+# 2. Test for interaction effect
+from scipy.stats import chi2_contingency
+
+# Create age categories: Young (0-40), Middle (40-70), Elderly (70+)
+df['age_category'] = pd.cut(df['age_group'].cat.codes, 
+                             bins=[0, 4, 7, 10], 
+                             labels=['Young', 'Middle', 'Elderly'])
+
+# Test if medication effect differs by age category
+for age_cat in ['Young', 'Middle', 'Elderly']:
+    subset = df[df['age_category'] == age_cat]
+    ct = pd.crosstab(subset['high_medication'], subset['readmission_status'])
+    chi2, p, dof, exp = chi2_contingency(ct)
+    print(f"\n{age_cat} age group - Medication effect: p-value = {p:.4f}")
